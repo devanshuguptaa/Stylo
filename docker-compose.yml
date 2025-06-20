@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:6.0
+    container_name: stylo-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: stylo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - stylo-network
+
+  # MERN Application
+  app:
+    build: .
+    container_name: stylo-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://admin:password123@mongodb:27017/stylo?authSource=admin
+      - JWT_SECRET=your-super-secret-jwt-key-here
+      - SESSION_SECRET=your-super-secret-session-key-here
+      - AUTH0_DOMAIN=your-domain.auth0.com
+      - AUTH0_CLIENT_ID=your-client-id
+      - AUTH0_CLIENT_SECRET=your-client-secret
+    depends_on:
+      - mongodb
+    networks:
+      - stylo-network
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+  # MongoDB Express (Optional - Database Admin UI)
+  mongo-express:
+    image: mongo-express:latest
+    container_name: stylo-mongo-express
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: password123
+      ME_CONFIG_MONGODB_URL: mongodb://admin:password123@mongodb:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: password123
+    depends_on:
+      - mongodb
+    networks:
+      - stylo-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  stylo-network:
+    driver: bridge 
