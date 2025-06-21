@@ -13,6 +13,7 @@ const jwt = require('jsonwebtoken');
 const User = require('./models/User');
 const Contact = require('./models/Contact');
 const authRoutes = require('./routes/auth');
+const MongoStore = require('connect-mongo');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -23,10 +24,19 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    secret: process.env.SESSION_SECRET || 'a_very_secret_key',
     resave: false,
-    saveUninitialized: false,
-    cookie: { secure: false } // Set to true in production with HTTPS
+    saveUninitialized: false, // Don't create session until something stored
+    store: MongoStore.create({
+        mongoUrl: process.env.MONGODB_URI,
+        collectionName: 'sessions', // You can name your session collection
+        ttl: 14 * 24 * 60 * 60 // = 14 days. Default is 14 days.
+    }),
+    cookie: {
+        secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+        httpOnly: true, // Prevent client-side access
+        maxAge: 1000 * 60 * 60 * 24 // 1 day
+    }
 }));
 
 // Serve static files
